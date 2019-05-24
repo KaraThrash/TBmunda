@@ -11,8 +11,10 @@ public class GameManager : MonoBehaviour
     public List<Soldier> team0, team1,activeSoldiers,spentTurnSoldiers, masterlist; // using speed instead of by team
     public int activeTeam, soldierInList;
     public Soldier selected;
+    public TurnManager turnManager;
     void Start()
     {
+       
        // soldierInList = activeSoldiers.Count - 1;
     }
 
@@ -20,14 +22,14 @@ public class GameManager : MonoBehaviour
     void Update()
     {
        // if (Input.GetKeyDown(KeyCode.Tab)) { ChangeFocus(); }
-        if (Input.GetKeyDown(KeyCode.LeftShift)) { SortSoldierList(); }
-        if (Input.GetKeyUp(KeyCode.T) )
-        {
-            Debug.Log("who is this:  " + transform.name);
+        //if (Input.GetKeyDown(KeyCode.LeftShift)) { SortSoldierList(); }
+        //if (Input.GetKeyUp(KeyCode.T) )
+        //{
+        //    Debug.Log("who is this:  " + transform.name);
             
 
-           TakeTurn();
-        }
+        //   TakeTurn();
+        //}
 
     }
     public void ChangeFocus()
@@ -103,6 +105,8 @@ public class GameManager : MonoBehaviour
 
     public void TakeTurn( )
     {
+
+
         Debug.Log("soldiers in list: " + soldierInList.ToString());
         soldierInList = soldierInList - 1 ;
         selected.ToggleFocus();
@@ -123,13 +127,13 @@ public class GameManager : MonoBehaviour
     }
     public void EndOfRound()
     {
-        soldierInList = activeSoldiers.Count - 1;
+       // soldierInList = activeSoldiers.Count - 1;
         foreach (Soldier el in activeSoldiers)
         { el.RefreshTurn(); }
-        selected = activeSoldiers[soldierInList];
-        selected.ToggleFocus();
+       // selected = activeSoldiers[soldierInList];
+      //  selected.ToggleFocus();
      
-        cam.GetComponent<ThirdPersonOrbitCam>().player = selected.transform;
+       // cam.GetComponent<ThirdPersonOrbitCam>().player = selected.transform;
     }
 
 }

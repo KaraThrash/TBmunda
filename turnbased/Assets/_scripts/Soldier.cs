@@ -7,16 +7,23 @@ public class Soldier : MonoBehaviour
     // Start is called before the first frame update
     public bool focused;
         public bool alert,spentTurn;
-    public Transform hpvisual,exhausted;
-    public int actionpoints, movepoints ,variablepoints;
+    public Transform hpvisual,exhausted,aimPoints;
+    public int team,actionpoints, movepoints ,variablepoints,currenthp,accuracy;
     public Vector3 posmark,lastpos; //location to track movement spent
     public Loadout loadout;
     public GameManager gameManager;
+    public TurnManager turnManager;
   //  public int speed,subspeed;
     void Start()
     {
+        movepoints = 12;
+        currenthp = Random.Range(1,6);
+        accuracy = Random.Range(1, 20);
+        actionpoints = Random.Range(11, 16);
+        TakeDamage(0);
         loadout = GetComponent<Loadout>();
         gameManager.activeSoldiers.Add(this);
+      //  turnManager.activeSoldiers.Add(this);
     }
 
     // Update is called once per frame
@@ -25,8 +32,8 @@ public class Soldier : MonoBehaviour
 
         if (focused == true )
         {
-            if (Vector3.Distance(posmark, transform.position) > 1)
-            { SpendMove(); }
+            //if (Vector3.Distance(posmark, transform.position) > 1)
+            //{ SpendMove(); }
             //if (Input.GetKeyUp(KeyCode.T) && spentTurn == false) {
             //    Debug.Log("who is this:  " + transform.name);
             //    spentTurn = true;
@@ -36,25 +43,67 @@ public class Soldier : MonoBehaviour
         }
 
     }
+    public void TakeDamage(int dmg)
+    {
+        int count = 0;
+        currenthp -= dmg;
+        while (count < hpvisual.childCount)
+        {
+            if (count <= currenthp)
+            { hpvisual.GetChild(count).gameObject.active = true; }
+            else { hpvisual.GetChild(count).gameObject.active = false; }
+            count++;
+        }
+
+    }
+
     public void SpentTurn()
-    { exhausted.gameObject.active = true; }
+    {
+        exhausted.gameObject.active = true;
+        focused = false;
+        spentTurn = true;
+        GetComponent<Animator>().Play("Change");
+        GetComponent<BasicBehaviour>().enabled = false;
+        GetComponent<MoveBehaviour>().enabled = false;
+        GetComponent<AimBehaviour>().enabled = false;
+        GetComponent<FlyBehaviour>().enabled = false;
+
+    }
 
     public void RefreshTurn()
-    { exhausted.gameObject.active = false; movepoints = 3; }
-    public void SpendMove()
     {
-        movepoints--;
+        spentTurn = false;
+        exhausted.gameObject.active = false;
+        movepoints = 5;
+
+    }
+    public int SpendMove(int moveSpent)
+    {
+        movepoints -= moveSpent;
         lastpos = posmark;
         posmark = transform.position;
 
-        if (movepoints <= 0 && variablepoints <= 0)
+        if (movepoints <= 0 )
         {
             //TODO: aiming movement should stop too
             GetComponent<Animator>().Play("Change");
             
         }
-    }
 
+        return movepoints;
+    }
+    public void Focus()
+    {
+        
+            focused = true;
+            posmark = transform.position;
+            GetComponent<Animator>().Play("Idle");
+            GetComponent<BasicBehaviour>().enabled = true;
+            GetComponent<MoveBehaviour>().enabled = true;
+            GetComponent<AimBehaviour>().enabled = true;
+            GetComponent<FlyBehaviour>().enabled = true;
+        
+    }
 
     public void ToggleFocus()
     {

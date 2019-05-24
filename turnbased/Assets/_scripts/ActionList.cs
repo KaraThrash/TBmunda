@@ -2,12 +2,9 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-public class Loadout : MonoBehaviour
+public class ActionList : MonoBehaviour
 {
     // Start is called before the first frame update
-    public int hp, speed, subspeed;
-    public int currenthp,accuracy;
-    public int team, actionpoints, movepoints, variablepoints;
     void Start()
     {
         
@@ -18,4 +15,7 @@ public class Loadout : MonoBehaviour
     {
         
     }
+
+
+
 }

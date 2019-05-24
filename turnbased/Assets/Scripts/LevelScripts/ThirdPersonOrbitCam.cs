@@ -147,7 +147,7 @@ public class ThirdPersonOrbitCam : MonoBehaviour
 			if(hit.transform != player && !hit.transform.GetComponent<Collider>().isTrigger)
 			{
 				// This position isn't appropriate.
-				return false;
+				//return false;
 			}
 		}
 		// If we haven't hit anything or we've hit the player, this is an appropriate position.
