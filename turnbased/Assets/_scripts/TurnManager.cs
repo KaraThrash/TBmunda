@@ -12,7 +12,10 @@ public class TurnManager : MonoBehaviour
     public Vector3 posmark, lastpos; //location to track movement spent
     public List<Soldier>  activeSoldiers;
     public List<Soldier> soldiersInRange;
-    public Text movepointsText, actionpointstext, tohittext,resultdisplay;
+    public Text movepointsText, actionpointstext, tohittext,resultdisplay,confirmaction;
+    public UImanager uiManager;
+    public ActionList actionManager;
+    public float watchActionTimer;
     // Start is called before the first frame update
     void Start()
     {
@@ -22,11 +25,30 @@ public class TurnManager : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
-        if (currentSoldier != null)
+
+        if (watchActionTimer > 0)
+        { watchActionTimer -= Time.deltaTime; }
+        else
         {
+            if (currentSoldier != null)
+            { ControlSoldier(); }
+
+        }
+
+
+        if (Input.GetKeyUp(KeyCode.Y))
+        {
+            SortSoldierList();
+        }
+
+    }
+
+
+    public void ControlSoldier()
+    {
             if (Input.GetMouseButton(1)) { moveLimiter.active = true; } else { moveLimiter.active = false; }
             activeMarker.transform.position = currentSoldier.transform.position;
-           // activeMarker.transform.eulerAngles = new Vector3(0,currentSoldier.transform.eulerAngles.y,0);
+            // activeMarker.transform.eulerAngles = new Vector3(0,currentSoldier.transform.eulerAngles.y,0);
             gun.transform.LookAt(cam.transform.GetChild(0));
             activeMarker.transform.LookAt(lookTarget.transform);
             moveLimiter.transform.position = posmark;
@@ -39,38 +61,58 @@ public class TurnManager : MonoBehaviour
             }
             if (Input.GetKeyUp(KeyCode.Alpha2))
             {
-                AbilityButtonPress(0);
+                AbilityButtonPress(1);
             }
             if (Input.GetKeyUp(KeyCode.Alpha3))
             {
-                AbilityButtonPress(0);
+                AbilityButtonPress(2);
             }
-        }
-       
-             if (Input.GetKeyUp(KeyCode.Y))
-        {
-            SortSoldierList();
-        }
+   
+
         if (Input.GetKeyUp(KeyCode.T))
         {
-           // Debug.Log("who is this:  " + transform.name);
+            // Debug.Log("who is this:  " + transform.name);
             EndTurn();
         }
         if (Input.GetKeyUp(KeyCode.R))
         {
             CheckRange(5);
         }
+    }
+    public void CheckReactions()
+    {
+        int count = activeSoldiers.Count - 1;
+        while (count >= 0)
+        {
+
+            if (activeSoldiers[count].loadout.reactionActions.Count > 0)
+            {
+                uiManager.UpdateScrollingText(activeSoldiers[count].transform.name + " reacts");
+                foreach (int el in activeSoldiers[count].loadout.reactionActions)
+                { actionManager.ConfirmReaction(el,activeSoldiers[count],GetComponent<TurnManager>()); }
+                uiManager.SetTurnList(activeSoldiers);
+
+
+            }
+
+            count--;
+        }
 
     }
+
 
     public void AbilityButtonPress(int abilityNumber)
     {
 
-        if (actionRemaining > 0)
+        if (lastActionPress != abilityNumber)
         {
-            if (lastActionPress != abilityNumber) { StartUseAbility(abilityNumber); }
-            else { EndUseAbility(abilityNumber); }
+            if (actionManager.CheckActionPoints( actionRemaining, abilityNumber, GetComponent<TurnManager>()) == true)
+            { StartUseAbility(abilityNumber); confirmaction.text = "Action: " + abilityNumber.ToString(); lastActionPress = abilityNumber; }
+            else { lastActionPress = -1; confirmaction.text = "not enough AP"; uiManager.UpdateScrollingText(" no ap "); }
+          
         }
+        else { EndUseAbility(abilityNumber); }
+
     }
 
     public void StartUseAbility(int ability)
@@ -86,47 +128,50 @@ public class TurnManager : MonoBehaviour
     }
     public void EndUseAbility(int ability)
     {
-        if (ability == 0 )
-        {
-            if (lookTarget == currentSoldier.gameObject) { CheckRange(5); resultdisplay.text = "looking at self "; }
+        actionManager.PerformAction(ability, this.GetComponent<TurnManager>());
+        lastActionPress = -1;
+        //TODO: dedicated script for action list
+        //if (ability == 0 )
+        //{
+        //    if (lookTarget == currentSoldier.gameObject) { CheckRange(5); resultdisplay.text = "looking at self "; }
 
-            if (lookTarget != currentSoldier.gameObject)
-            {
-                actionRemaining--;
-                actionpointstext.text = actionRemaining.ToString();
+        //    if (lookTarget != currentSoldier.gameObject)
+        //    {
+        //        actionRemaining--;
+        //        actionpointstext.text = actionRemaining.ToString();
 
-                int tohit = CalculateToHit();
-                int roll = Random.Range(1, 101);
-                if (tohit > roll)
-                {
-                    lookTarget.GetComponent<Soldier>().TakeDamage(1);
-                    lastActionPress = -1;
-                    GameObject clone = Instantiate(bulletPrefab2, gun.transform.position, transform.rotation) as GameObject;
+        //        int tohit = CalculateToHit();
+        //        int roll = Random.Range(1, 101);
+        //        if (tohit > roll)
+        //        {
+        //            lookTarget.GetComponent<Soldier>().TakeDamage(1);
+        //            lastActionPress = -1;
+        //            GameObject clone = Instantiate(bulletPrefab2, gun.transform.position, transform.rotation) as GameObject;
   
-                    clone.GetComponent<Bullet>().holdvel = (lookTarget.transform.position - gun.transform.position) + transform.up;
-                    resultdisplay.text = "hit : " + lookTarget.transform.name + " :hp: " + lookTarget.GetComponent<Soldier>().currenthp.ToString();
-                }
-                else {
+        //            clone.GetComponent<Bullet>().holdvel = (lookTarget.transform.position - gun.transform.position) + transform.up;
+        //            resultdisplay.text = "hit : " + lookTarget.transform.name + " :hp: " + lookTarget.GetComponent<Soldier>().currenthp.ToString();
+        //        }
+        //        else {
                    
-                    //check to see if miss destroys something
-                    Vector3 newdir = new Vector3(lookTarget.transform.position.x + (  Random.Range(-0.3f,1.0f)), lookTarget.transform.position.y + (Random.Range(-0.3f, 1.0f)), lookTarget.transform.position.z + (Random.Range(-0.3f, 1.0f))) - gun.transform.position;
-                    resultdisplay.text = "missed " + lookTarget.transform.name;
-                    RaycastHit hit;
-                    GameObject clone = Instantiate(bulletPrefab,gun.transform.position,transform.rotation) as GameObject;
+        //            //check to see if miss destroys something
+        //            Vector3 newdir = new Vector3(lookTarget.transform.position.x + (  Random.Range(-0.3f,1.0f)), lookTarget.transform.position.y + (Random.Range(-0.3f, 1.0f)), lookTarget.transform.position.z + (Random.Range(-0.3f, 1.0f))) - gun.transform.position;
+        //            resultdisplay.text = "missed " + lookTarget.transform.name;
+        //            RaycastHit hit;
+        //            GameObject clone = Instantiate(bulletPrefab,gun.transform.position,transform.rotation) as GameObject;
                  
-                    clone.GetComponent<Bullet>().holdvel = newdir;
-                    if (Physics.Raycast(gun.transform.position, newdir, out hit, 15.0f))
-                    {
+        //            clone.GetComponent<Bullet>().holdvel = newdir;
+        //            if (Physics.Raycast(gun.transform.position, newdir, out hit, 15.0f))
+        //            {
                        
                         
-                        if (hit.transform.tag == "destructable")
-                        {
-                          //  Destroy(hit.transform.gameObject);
-                        }
-                    }
-                }
-            }
-        }
+        //                if (hit.transform.tag == "destructable")
+        //                {
+        //                  //  Destroy(hit.transform.gameObject);
+        //                }
+        //            }
+        //        }
+        //    }
+        //}
     }
 
     public void CheckRange(int maxDistance)
@@ -221,7 +266,12 @@ public class TurnManager : MonoBehaviour
                     lastpos = currentSoldier.transform.position;
                     posmark = currentSoldier.transform.position;
                     currentSoldier.Focus();
-                    lookTarget = currentSoldier.gameObject;
+
+                    uiManager.SetTurnList(activeSoldiers);
+
+
+                    uiManager.SetSoldierDisplayerText(currentSoldier);
+                    lookTarget = currentSoldier.gameObject; 
                     cam.GetComponent<ThirdPersonOrbitCam>().player = currentSoldier.transform;
                     actionRemaining = currentSoldier.actionpoints;
                     movepointsText.text = currentSoldier.movepoints.ToString();
@@ -253,6 +303,8 @@ public class TurnManager : MonoBehaviour
 
         currentSoldier = activeSoldiers[activeSoldiers.Count - 1];
         currentSoldier.Focus();
+       // uiManager.SetSoldierDisplayerText(currentSoldier);
+        uiManager.SetTurnList(activeSoldiers);
         lookTarget = currentSoldier.gameObject;
         movepointsText.text = currentSoldier.movepoints.ToString();
         actionRemaining = currentSoldier.actionpoints;

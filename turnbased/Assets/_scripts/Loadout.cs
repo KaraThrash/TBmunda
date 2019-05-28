@@ -8,6 +8,7 @@ public class Loadout : MonoBehaviour
     public int hp, speed, subspeed;
     public int currenthp,accuracy;
     public int team, actionpoints, movepoints, variablepoints;
+    public List<int> availableActions,reactionActions;
     void Start()
     {
         

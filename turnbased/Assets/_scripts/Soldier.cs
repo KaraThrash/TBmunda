@@ -7,12 +7,15 @@ public class Soldier : MonoBehaviour
     // Start is called before the first frame update
     public bool focused;
         public bool alert,spentTurn;
-    public Transform hpvisual,exhausted,aimPoints;
-    public int team,actionpoints, movepoints ,variablepoints,currenthp,accuracy;
+    public Transform hpvisual,exhausted,aimPoints,statDisplay;
+    public int team,teamnumber,actionpoints, movepoints ,variablepoints,currenthp,accuracy;
     public Vector3 posmark,lastpos; //location to track movement spent
+   
     public Loadout loadout;
+
     public GameManager gameManager;
     public TurnManager turnManager;
+
   //  public int speed,subspeed;
     void Start()
     {
