@@ -12,6 +12,7 @@ public struct actionData
 
 public class ActionList : MonoBehaviour
 {
+    public reaction reactToReturn;
     public UImanager uiManager;
     public actionData currentAction;
     // Start is called before the first frame update
@@ -39,6 +40,8 @@ public class ActionList : MonoBehaviour
                 if (pts > 1)
                 {
                     uiManager.UpdateScrollingText(" jump ");
+                    SetCurrentAction(turnManager.currentSoldier.team, turnManager.currentSoldier.gameObject, 1, 1, 0);
+                    turnManager.CheckReactions();
                     turnManager.watchActionTimer = 1.0f;
                     turnManager.currentSoldier.GetComponent<Rigidbody>().AddForce(Vector3.up * 510.0f * Time.deltaTime, ForceMode.Impulse);
                 }
@@ -52,22 +55,49 @@ public class ActionList : MonoBehaviour
     }
 
     //second press
-    public float PerformAction(int action,TurnManager turnManager)
+    public float ConfirmAction(int action, TurnManager turnManager)
     {
         float actionTimer = 0.0f;
         switch (action)
         {
             case 0:
-                actionTimer = 1.0f;
-                uiManager.UpdateScrollingText(" fire gun ");
-                currentAction.team = turnManager.currentSoldier.team;
-                currentAction.target = turnManager.lookTarget;
+     
+                SetCurrentAction(turnManager.currentSoldier.team, turnManager.lookTarget, 0, 0, 0);
+
                 turnManager.CheckReactions();
+   
+                break;
+            case 1:
+          
+
+                break;
+            case 2:
+
+                break;
+            default:
+                break;
+        }
+
+        return actionTimer;
+    }
+
+    public float PerformAction(TurnManager turnManager)
+    {
+        float actionTimer = 0.0f;
+    
+        switch (currentAction.actionNumber)
+        {
+            case 0:
+              
+                uiManager.UpdateScrollingText(" fire gun ");
+ 
                 FireGun(turnManager);
                 break;
             case 1:
                 Debug.Log("jump");
-               
+                SetCurrentAction(turnManager.currentSoldier.team, turnManager.currentSoldier.gameObject, 1, 1, 0);
+
+
                 break;
             case 2:
                 
@@ -78,17 +108,37 @@ public class ActionList : MonoBehaviour
 
         return actionTimer;
     }
-
-
-    public bool ConfirmReaction(int action, Soldier reactingSoldier,TurnManager turnManager)
+    public void SetCurrentAction(int teamnum, GameObject tar,int actionnumber,int reactnum,int targetnum)
     {
-        bool enoughPoints = false;
+        currentAction.team = teamnum;
+        currentAction.target = tar;
+        currentAction.actionNumber = actionnumber;
+        currentAction.reactType = reactnum;
+        currentAction.targetType = targetnum;
+    }
+
+    public reaction ConfirmReaction(int action, Soldier reactingSoldier,TurnManager turnManager)
+    {
+       
+        reactToReturn.actor = reactingSoldier.transform;
+        reactToReturn.target = reactingSoldier.transform;
+        reactToReturn.action = 0;
+        reactToReturn.waittime = 0;
+      
         switch (action)
         {
             case 0:
-                if (currentAction.team != reactingSoldier.team  ) {
-                    uiManager.UpdateScrollingText(reactingSoldier.transform.name + " react fire gun ");
-                    ReactFireGun(reactingSoldier,currentAction.target,turnManager);
+                if (currentAction.team != reactingSoldier.team  && reactingSoldier.usedReaction == false) {
+
+
+
+                    reactingSoldier.transform.LookAt(turnManager.lookTarget.transform);
+                    reactToReturn.actor = reactingSoldier.transform;
+                    reactToReturn.target = turnManager.lookTarget.transform;
+                    reactToReturn.action = 0;
+                    reactToReturn.waittime = 1.0f;
+                    // turnManager.cam.GetComponent<ThirdPersonOrbitCam>().player = reactingSoldier.transform;
+                   
                 }
 
               
@@ -102,8 +152,34 @@ public class ActionList : MonoBehaviour
             default:
                 break;
         }
-        return enoughPoints;
+        return reactToReturn;
     }
+
+    public void PerformReaction( reaction raction, TurnManager turnManager)
+    {
+
+    
+        int reactnum = raction.action;
+        switch (reactnum)
+        {
+            case 0:
+               
+                    uiManager.UpdateScrollingText(raction.actor.name + " react fire gun ");
+                    ReactFireGun(raction.actor.GetComponent<Soldier>(), raction.target.gameObject, turnManager);
+  
+                break;
+            case 1:
+
+                break;
+            case 2:
+
+                break;
+            default:
+                break;
+        }
+      
+    }
+
 
     public void ReactFireGun(Soldier shooting,GameObject target,TurnManager turnManager)
     {

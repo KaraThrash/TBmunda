@@ -2,38 +2,72 @@
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
+public struct reaction
+{
+    public int action;
+    public Transform actor, target;
+        public float waittime;
+    public string anim;
+}
 public class TurnManager : MonoBehaviour
 {
     public GameManager gameManager;
-    public GameObject cam,activeMarker,gun,targetMarker,lookTarget,moveLimiter,bulletPrefab, bulletPrefab2;
+    public GameObject cam,reactCam,activeMarker,gun,targetMarker,lookTarget,moveLimiter,bulletPrefab, bulletPrefab2;
     public Transform accRaycastHitIndicatorParent;
     public Soldier currentSoldier;
     public int actionRemaining, moveRemaining, wildRemaining,lastActionPress;
     public Vector3 posmark, lastpos; //location to track movement spent
     public List<Soldier>  activeSoldiers;
     public List<Soldier> soldiersInRange;
+    public List<reaction> reactsOnStack;
     public Text movepointsText, actionpointstext, tohittext,resultdisplay,confirmaction;
     public UImanager uiManager;
     public ActionList actionManager;
     public float watchActionTimer;
+    public bool reacting;
     // Start is called before the first frame update
     void Start()
     {
-        
+        reactsOnStack = new List<reaction>();
     }
 
     // Update is called once per frame
     void Update()
     {
 
-        if (watchActionTimer > 0)
-        { watchActionTimer -= Time.deltaTime; }
-        else
+        if (reactsOnStack.Count > 0 && reacting == true)
         {
+           
+                if (watchActionTimer > 0)
+                {
+               
+                    watchActionTimer -= Time.deltaTime;
+                }
+                else
+                {
+                //reactions are kept in a list going backwards: LiFO //trade off for going first -> reacting last
+                    LoopThroughReactions();
+                  
+                
+                }
+              
+           }
+            else
+            {
+            if (reacting == true)
+            {
+                if (watchActionTimer > 0)
+                {
+                    cam.active = true;
+                    reactCam.active = false;
+                    watchActionTimer -= Time.deltaTime;
+                }
+                else
+                { reacting = false; actionManager.PerformAction(GetComponent<TurnManager>()); } }
             if (currentSoldier != null)
             { ControlSoldier(); }
 
-        }
+         }
 
 
         if (Input.GetKeyUp(KeyCode.Y))
@@ -42,7 +76,16 @@ public class TurnManager : MonoBehaviour
         }
 
     }
+    public void LoopThroughReactions()
+    {
 
+        watchActionTimer = reactsOnStack[reactsOnStack.Count - 1].waittime;
+        reactCam.transform.position = reactsOnStack[reactsOnStack.Count - 1].actor.transform.position;
+        reactCam.transform.LookAt(reactsOnStack[reactsOnStack.Count - 1].target);
+        actionManager.PerformReaction(reactsOnStack[reactsOnStack.Count - 1],GetComponent<TurnManager>());
+        reactsOnStack.RemoveAt(reactsOnStack.Count - 1);
+
+    }
 
     public void ControlSoldier()
     {
@@ -82,24 +125,45 @@ public class TurnManager : MonoBehaviour
     public void CheckReactions()
     {
         int count = activeSoldiers.Count - 1;
+        reacting = false;
+        float timer = 0;
         while (count >= 0)
         {
+            // Transform camFocus = cam.GetComponent<ThirdPersonOrbitCam>().player;
+          
+              
+                if (activeSoldiers[count].loadout.reactionActions.Count > 0)
+                {
+                    uiManager.UpdateScrollingText(activeSoldiers[count].transform.name + " reacts");
+                    foreach (int el in activeSoldiers[count].loadout.reactionActions)
+                    {
 
-            if (activeSoldiers[count].loadout.reactionActions.Count > 0)
-            {
-                uiManager.UpdateScrollingText(activeSoldiers[count].transform.name + " reacts");
-                foreach (int el in activeSoldiers[count].loadout.reactionActions)
-                { actionManager.ConfirmReaction(el,activeSoldiers[count],GetComponent<TurnManager>()); }
-                uiManager.SetTurnList(activeSoldiers);
+                        reaction newReact = actionManager.ConfirmReaction(el, activeSoldiers[count], GetComponent<TurnManager>());
+                        if (newReact.waittime > 0)
+                        {
+                            Debug.Log("Add Reaction: ");
+                            reactsOnStack.Add(newReact);
+
+                        }
 
 
+                    }
+                   // uiManager.SetTurnList(activeSoldiers);
+
+
+                
+             
+                count--;
             }
-
-            count--;
         }
-
+        if (reactsOnStack.Count > 0)
+        {
+            cam.active = false;
+            reactCam.active = true;
+            reacting = true;
+        }
     }
-
+  
 
     public void AbilityButtonPress(int abilityNumber)
     {
@@ -128,7 +192,7 @@ public class TurnManager : MonoBehaviour
     }
     public void EndUseAbility(int ability)
     {
-        actionManager.PerformAction(ability, this.GetComponent<TurnManager>());
+        actionManager.ConfirmAction(ability, this.GetComponent<TurnManager>());
         lastActionPress = -1;
         //TODO: dedicated script for action list
         //if (ability == 0 )

@@ -6,7 +6,7 @@ public class Soldier : MonoBehaviour
 {
     // Start is called before the first frame update
     public bool focused;
-        public bool alert,spentTurn;
+        public bool alert,spentTurn,usedReaction;
     public Transform hpvisual,exhausted,aimPoints,statDisplay;
     public int team,teamnumber,actionpoints, movepoints ,variablepoints,currenthp,accuracy;
     public Vector3 posmark,lastpos; //location to track movement spent
@@ -19,6 +19,7 @@ public class Soldier : MonoBehaviour
   //  public int speed,subspeed;
     void Start()
     {
+        usedReaction = false;
         movepoints = 12;
         currenthp = Random.Range(1,6);
         accuracy = Random.Range(1, 20);
@@ -76,6 +77,7 @@ public class Soldier : MonoBehaviour
     public void RefreshTurn()
     {
         spentTurn = false;
+        usedReaction = false;
         exhausted.gameObject.active = false;
         movepoints = 5;
 
