@@ -8,7 +8,7 @@ public class Soldier : MonoBehaviour
     public bool focused;
         public bool alert,spentTurn,usedReaction;
     public Transform hpvisual,exhausted,aimPoints,statDisplay;
-    public int team,teamnumber,actionpoints, movepoints ,variablepoints,currenthp,accuracy;
+    public int team,teamnumber,actionpoints, movepoints ,variablepoints, currentreactPoints,currenthp, accuracy;
     public Vector3 posmark,lastpos; //location to track movement spent
    
     public Loadout loadout;
@@ -21,12 +21,16 @@ public class Soldier : MonoBehaviour
     {
         usedReaction = false;
         movepoints = 12;
-        currenthp = Random.Range(1,6);
+        currenthp = 5;// Random.Range(1,6);
         accuracy = Random.Range(1, 20);
         actionpoints = Random.Range(11, 16);
         TakeDamage(0);
         loadout = GetComponent<Loadout>();
+        currentreactPoints = 3;
         gameManager.activeSoldiers.Add(this);
+        // ConfirmReaction(int action, Soldier reactingSoldier, TurnManager turnManager)
+        
+       
       //  turnManager.activeSoldiers.Add(this);
     }
 
@@ -47,7 +51,7 @@ public class Soldier : MonoBehaviour
         }
 
     }
-    public void TakeDamage(int dmg)
+    public int TakeDamage(int dmg)
     {
         int count = 0;
         currenthp -= dmg;
@@ -59,6 +63,7 @@ public class Soldier : MonoBehaviour
             count++;
         }
 
+        return currenthp;
     }
 
     public void SpentTurn()
@@ -80,7 +85,7 @@ public class Soldier : MonoBehaviour
         usedReaction = false;
         exhausted.gameObject.active = false;
         movepoints = 5;
-
+        currentreactPoints = loadout.reactPoints;
     }
     public int SpendMove(int moveSpent)
     {
