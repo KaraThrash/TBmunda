@@ -41,17 +41,19 @@ public class ActionList : MonoBehaviour
         bool enoughPoints = false; 
         switch (action)
         {
-            case 0:
-                if (currentActionPoints > 1 && actor.team != actiontarget.team) { enoughPoints = true; }
+            case 0://Can shoot own tean// && actor.team != actiontarget.team
+                if (currentActionPoints > 1 ) { enoughPoints = true; }
                 break;
             case 1:
-                if (currentActionPoints > 1)
+                if (turnManager.moveRemaining >= 1)
                 {
+
                     uiManager.UpdateScrollingText(" jump ");
-                    SetCurrentAction(turnManager.currentSoldier.team, actor,actiontarget, 1, 1, 0,actor.transform.position);
-                   
+                    // SetCurrentAction(turnManager.currentSoldier.team, actor,actiontarget, 1, 1, 0,actor.transform.position);
+                    enoughPoints = true;
                     //turnManager.watchActionTimer = 1.0f;
-                    turnManager.currentSoldier.GetComponent<Rigidbody>().AddForce(Vector3.up * 510.0f * Time.deltaTime, ForceMode.Impulse);
+
+                  //  turnManager.currentSoldier.GetComponent<Rigidbody>().AddForce(Vector3.up * 510.0f * Time.deltaTime, ForceMode.Impulse);
                 }
                 break;
             case 2:
@@ -65,7 +67,7 @@ public class ActionList : MonoBehaviour
     //second press
     public actionData ConfirmAction(int action, Soldier actor, Soldier actiontarget, TurnManager turnManager)
     {
-      
+        //actionData SetCurrentAction(int teamnum, Soldier owner, Soldier tar, int actionnumber, int reactnum, int targetnum, Vector3 loc)
         switch (action)
         {
             case 0: //shoot
@@ -76,7 +78,7 @@ public class ActionList : MonoBehaviour
    
                 break;
             case 1: //jump
-                turnManager.SpendActionPoints(1);
+                turnManager.IncrementMove(1);
                 return SetCurrentAction(actor.team, actor, actor, 1, 1, 0,actor.transform.position);
                 //turnManager.CheckReactions();
                 break;
@@ -106,7 +108,7 @@ public class ActionList : MonoBehaviour
                 Debug.Log("jump"); 
                 //SetCurrentAction(currentAction.team, currentAction.ownerpublic, 1, 1, 0);
                 actionTimer = act.actionTime;
-
+                act.actor.GetComponent<Rigidbody>().AddForce(Vector3.up * 510.0f * Time.deltaTime, ForceMode.Impulse);
                 break;
             case 2://take damage
 
@@ -144,9 +146,9 @@ public class ActionList : MonoBehaviour
 
 
     //       public int action, targettype, reacttype, teamtype, range;
-    //public Soldier actor, target;
-    //public float waittime;
-    //public string anim;
+    //      public Soldier actor, target;
+            //public float waittime;
+            //public string anim;
         switch (action)
         {
             case 0:// when teammate shoots, assist them
@@ -154,7 +156,7 @@ public class ActionList : MonoBehaviour
                 tempReact.actor = reactingSoldier;
                 tempReact.reacttype = 0;
                 tempReact.turnsactive = -1;
-                tempReact.teamtype = 1;
+                tempReact.teamtype = 0;
                 tempReact.cost = 1;
                // if (reactingSoldier.team == 0) { tempReact.teamtype = 1; } else { tempReact.teamtype = 0; }
                 
@@ -163,8 +165,16 @@ public class ActionList : MonoBehaviour
 
               
                 break;
-            case 1:
-             
+            case 1://when enemy moves, shoot them
+                tempReact.action = 0;//shoot
+                tempReact.actor = reactingSoldier;
+                tempReact.reacttype = 1;
+                tempReact.turnsactive = -1;
+                tempReact.teamtype = 1;
+                tempReact.cost = 1;
+              
+
+                tempReact.range = reactingSoldier.loadout.range;
                 break;
             case 2:
                
@@ -245,10 +255,14 @@ public class ActionList : MonoBehaviour
         // if (act.target == act.actor) { turnManager.CheckRange(5); turnManager.resultdisplay.text = "looking at self "; Debug.Log("dont shoot im you "); }
 
         //uiManager.UpdateScrollingText(act.actor.transform.name + " shoots at " + act.target.transform.name);
-        if (act.target.team != act.actor.team)
-        {
+
+
+
+
+       // if (act.target.team != act.actor.team)
+       // {
             act.actor.transform.LookAt(act.target.transform);
-            Debug.Log("hit: Fire gun ");
+            Debug.Log("Firing  gun ");
             //  turnManager.actionRemaining--;
             turnManager.actionpointstext.text = turnManager.actionRemaining.ToString();
 
@@ -284,8 +298,8 @@ public class ActionList : MonoBehaviour
                     }
                 }
             }
-        }
-        else { Debug.Log("sameteam"); uiManager.UpdateScrollingText(act.actor.transform.name + " doesnt shoot at " + act.target.transform.name); }
+       // }
+       // else { Debug.Log("sameteam"); uiManager.UpdateScrollingText(act.actor.transform.name + " doesnt shoot at " + act.target.transform.name); }
 
     }
 }

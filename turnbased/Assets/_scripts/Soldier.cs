@@ -87,6 +87,8 @@ public class Soldier : MonoBehaviour
         movepoints = 5;
         currentreactPoints = loadout.reactPoints;
     }
+
+
     public int SpendMove(int moveSpent)
     {
         movepoints -= moveSpent;

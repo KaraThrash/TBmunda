@@ -78,9 +78,12 @@ public class TurnManager : MonoBehaviour
     public void LoopThroughactions()
     {
         Debug.Log("action loop: " + actionsOnStack.Count.ToString());
+       
         watchActionTimer = actionsOnStack[actionsOnStack.Count - 1].actionTime;
         reactCam.transform.position = actionsOnStack[actionsOnStack.Count - 1].actor.transform.position;
         reactCam.transform.LookAt(actionsOnStack[actionsOnStack.Count - 1].target.transform);
+        //cam.GetComponent<ThirdPersonOrbitCam>().player = actionsOnStack[actionsOnStack.Count - 1].actor.transform;
+
         actionManager.PerformAction(actionsOnStack[actionsOnStack.Count - 1],GetComponent<TurnManager>());
         actionsOnStack.RemoveAt(actionsOnStack.Count - 1);
         uiManager.SetTurnList(activeSoldiers);
@@ -121,7 +124,7 @@ public class TurnManager : MonoBehaviour
         }
         if (Input.GetKeyUp(KeyCode.R) && lastActionPress != -1)
         {
-            CheckRange(15);
+            CheckRange(currentSoldier.loadout.range);
         }
     }
     public void CheckReactions(actionData act)
@@ -136,9 +139,9 @@ public class TurnManager : MonoBehaviour
                 //   Debug.Log("diff team:  confirmed react");
                 // actionsOnStack.Add(actionManager.ConfirmAction(el.action, el.actor,act.target, this.GetComponent<TurnManager>()));
 
-                if ((act.team == el.actor.team && el.teamtype == 1) && el.actor != act.actor)
+                if (((act.team == el.actor.team && el.teamtype == 0) || (act.team != el.actor.team && el.teamtype == 1)) && el.actor != act.actor)
                 {
-                    Debug.Log("same team : confirmed react");
+                    Debug.Log(" confirmed react");
                     actionsOnStack.Add(actionManager.ConfirmAction(el.action, el.actor, act.target, this.GetComponent<TurnManager>()));
                     el.actor.usedReaction = true;
                     el.actor.currentreactPoints -= el.cost;
@@ -164,10 +167,16 @@ public class TurnManager : MonoBehaviour
             if (focusTeam == true && (int)currentSoldier.loadout.actions[abilityNumber].y == 1) { soldiersInRange.Clear(); focusTeam = false; }
             if (focusTeam == false && (int)currentSoldier.loadout.actions[abilityNumber].y == 0) { soldiersInRange.Clear(); focusTeam = true; }
 
+            if (soldiersInRange.Count == 0) { CheckRange(currentSoldier.loadout.range); }
+         
 
-          CheckRange(15);
+
             if (actionManager.CheckActionPoints(abilityNumber,actionRemaining,currentSoldier ,lookTarget, GetComponent<TurnManager>()) == true)
-            { StartUseAbility(abilityNumber); confirmaction.text = "Action: " + abilityNumber.ToString(); lastActionPress = abilityNumber; }
+            {
+                StartUseAbility(abilityNumber);
+                confirmaction.text = "Action: " + abilityNumber.ToString();
+                lastActionPress = abilityNumber;
+            }
             else { lastActionPress = -1; confirmaction.text = "not enough AP"; uiManager.UpdateScrollingText(" no ap "); }
           
         }
@@ -221,13 +230,15 @@ public class TurnManager : MonoBehaviour
                 //el != currentSoldier &&
                 if ( Vector3.Distance(currentSoldier.transform.position, el.transform.position) <= maxDistance)
                     {
+                    soldiersInRange.Add(el);
+                    //note: can always target everyone.
 
-                        if ((el.team != currentSoldier.team && focusTeam == false) || (el.team == currentSoldier.team && focusTeam == true)) { soldiersInRange.Add(el); }
+                //    if ((el.team != currentSoldier.team && focusTeam == false) || (el.team == currentSoldier.team && focusTeam == true)) { soldiersInRange.Add(el); }
+                  //  else { soldiersInRange.Add(el); }
 
-
-                    }
+                     }
                 
-                         else { soldiersInRange.Add(el); }
+                         
             }
             if (soldiersInRange.Count != 0)
             {
@@ -308,8 +319,6 @@ public class TurnManager : MonoBehaviour
                     currentSoldier.Focus();
 
                     uiManager.SetTurnList(activeSoldiers);
-
-
                     uiManager.SetSoldierDisplayerText(currentSoldier);
                     lookTarget = currentSoldier; 
                     cam.GetComponent<ThirdPersonOrbitCam>().player = currentSoldier.transform;
@@ -345,8 +354,11 @@ public class TurnManager : MonoBehaviour
         {
             if (el.loadout.reactionActions.Count > 0)
             {
-
-                reactsOnStack.Add(actionManager.ConfirmReaction(el.loadout.reactionActions[0], el, GetComponent<TurnManager>()));
+                //add all reactions
+                foreach (int elr in el.loadout.reactionActions)
+                {
+                    reactsOnStack.Add(actionManager.ConfirmReaction(elr, el, GetComponent<TurnManager>()));
+                }
                 Debug.Log("adding react");
             }
 
