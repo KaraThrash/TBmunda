@@ -56,8 +56,19 @@ public class ActionList : MonoBehaviour
                   //  turnManager.currentSoldier.GetComponent<Rigidbody>().AddForce(Vector3.up * 510.0f * Time.deltaTime, ForceMode.Impulse);
                 }
                 break;
-            case 2:
+            case 2: // basic move
+                if (turnManager.moveRemaining >= 1)
+                {
+
+                    uiManager.UpdateScrollingText(" walk ");
+                    enoughPoints = true;
+                }
+                break;
+            case 3:///overwatch
+                if (currentActionPoints > 1) { enoughPoints = true; }
                
+
+
                 break;
             default:
                 break;
@@ -71,18 +82,33 @@ public class ActionList : MonoBehaviour
         switch (action)
         {
             case 0: //shoot
-                turnManager.SpendActionPoints(1);
+                if (actor == turnManager.currentSoldier) { turnManager.SpendActionPoints(1); }
+              
                 return SetCurrentAction(actor.team, actor,actiontarget, 0, 0, 0, actor.transform.position);
 
                // turnManager.CheckReactions();
    
                 break;
             case 1: //jump
-                turnManager.IncrementMove(1);
+                //turnManager.IncrementMove(1);
+               
+                if (actor == turnManager.currentSoldier) { actor.SpendMove(1); }
                 return SetCurrentAction(actor.team, actor, actor, 1, 1, 0,actor.transform.position);
                 //turnManager.CheckReactions();
                 break;
-            case 2:
+            case 2://regular move
+
+                if (actor == turnManager.currentSoldier) { actor.SpendMove(1); }
+                return SetCurrentAction(actor.team, actor, actor, 2, 1, 0, actor.transform.position,0,0,0);
+
+
+                break;
+            case 3:///overwatch
+                int apremaining = turnManager.actionRemaining;
+                turnManager.SpendActionPoints(-1);
+                if (actor == turnManager.currentSoldier) { turnManager.SpendActionPoints(-1); }
+                return SetCurrentAction(actor.team, actor, actor, 3, 2, 0, actor.transform.position, apremaining, apremaining,1.0f);
+
 
                 break;
             default:
@@ -110,13 +136,22 @@ public class ActionList : MonoBehaviour
                 actionTimer = act.actionTime;
                 act.actor.GetComponent<Rigidbody>().AddForce(Vector3.up * 510.0f * Time.deltaTime, ForceMode.Impulse);
                 break;
-            case 2://take damage
+            case 2://regular move
+                turnManager.IncrementMove(0);
 
-
+                break;
+            case 3://overwatch
+               
+                act.actor.currentreactPoints += act.damage;
+                act.actor.inOverwatch = true;
+                act.actor.loadout.reactionActions.Add(1);
+                turnManager.reactsOnStack.Add(ConfirmReaction(1,act.actor,turnManager));
                 break;
             default:
                 break;
         }
+
+        if (act.actor.inOverwatch == true && act.actor.currentreactPoints <= 0) { act.actor.inOverwatch = false; }
 
         return actionTimer;
     }
@@ -133,7 +168,21 @@ public class ActionList : MonoBehaviour
         tempAction.loc = loc;
         return tempAction;
     }
-
+    public actionData SetCurrentAction(int teamnum, Soldier owner, Soldier tar, int actionnumber, int reactnum, int targetnum, Vector3 loc,int newdmg,int newrng,float waitTime)
+    {
+        actionData tempAction = new actionData();
+        tempAction.actor = owner;
+        tempAction.team = owner.team;
+        tempAction.target = tar;
+        tempAction.actionTime = waitTime;
+        tempAction.actionNumber = actionnumber;
+        tempAction.reactType = reactnum;
+        tempAction.targetType = targetnum;
+        tempAction.loc = loc;
+        tempAction.damage = newdmg;
+        tempAction.range = newrng;
+        return tempAction;
+    }
     //to add to the list the turnmanager checks 
     public reaction ConfirmReaction(int action, Soldier reactingSoldier,TurnManager turnManager)
     {

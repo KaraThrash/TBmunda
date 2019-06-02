@@ -6,8 +6,8 @@ public class Soldier : MonoBehaviour
 {
     // Start is called before the first frame update
     public bool focused;
-        public bool alert,spentTurn,usedReaction;
-    public Transform hpvisual,exhausted,aimPoints,statDisplay;
+        public bool alert,spentTurn,usedReaction,inOverwatch;
+    public Transform eyes,hpvisual,exhausted,aimPoints,statDisplay;
     public int team,teamnumber,actionpoints, movepoints ,variablepoints, currentreactPoints,currenthp, accuracy;
     public Vector3 posmark,lastpos; //location to track movement spent
    
@@ -22,11 +22,12 @@ public class Soldier : MonoBehaviour
         usedReaction = false;
         movepoints = 12;
         currenthp = 5;// Random.Range(1,6);
-        accuracy = Random.Range(1, 20);
+        accuracy = Random.Range(1, 30);
         actionpoints = Random.Range(11, 16);
-        TakeDamage(0);
+        
         loadout = GetComponent<Loadout>();
-        currentreactPoints = 3;
+        RefreshTurn();
+        TakeDamage(0);
         gameManager.activeSoldiers.Add(this);
         // ConfirmReaction(int action, Soldier reactingSoldier, TurnManager turnManager)
         
@@ -57,7 +58,7 @@ public class Soldier : MonoBehaviour
         currenthp -= dmg;
         while (count < hpvisual.childCount)
         {
-            if (count <= currenthp)
+            if (count < currenthp)
             { hpvisual.GetChild(count).gameObject.active = true; }
             else { hpvisual.GetChild(count).gameObject.active = false; }
             count++;
@@ -84,8 +85,10 @@ public class Soldier : MonoBehaviour
         spentTurn = false;
         usedReaction = false;
         exhausted.gameObject.active = false;
-        movepoints = 5;
+        actionpoints = loadout.actionpoints;
+        movepoints = loadout.movepoints;
         currentreactPoints = loadout.reactPoints;
+        inOverwatch = false;
     }
 
 
@@ -106,7 +109,7 @@ public class Soldier : MonoBehaviour
     }
     public void Focus()
     {
-        
+      
             focused = true;
             posmark = transform.position;
             GetComponent<Animator>().Play("Idle");
@@ -116,7 +119,17 @@ public class Soldier : MonoBehaviour
             GetComponent<FlyBehaviour>().enabled = true;
         
     }
+    public void FocusOff()
+    {
+       
+        //posmark = transform.position;
+        GetComponent<Animator>().Play("Change");
+        GetComponent<BasicBehaviour>().enabled = false;
+        GetComponent<MoveBehaviour>().enabled = false;
+        GetComponent<AimBehaviour>().enabled = false;
+        GetComponent<FlyBehaviour>().enabled = false;
 
+    }
     public void ToggleFocus()
     {
         if (focused == true) {

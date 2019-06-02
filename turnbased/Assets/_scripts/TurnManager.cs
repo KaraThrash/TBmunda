@@ -9,7 +9,7 @@ public class TurnManager : MonoBehaviour
     public GameObject cam,reactCam,activeMarker,gun,targetMarker,moveLimiter,bulletPrefab, bulletPrefab2;
     public Transform accRaycastHitIndicatorParent;
     public Soldier currentSoldier,lookTarget;
-    public int actionRemaining, moveRemaining, wildRemaining,lastActionPress;
+    public int actionRemaining, moveRemaining, wildRemaining,lastActionPress,targetInList;
     public Vector3 posmark, lastpos; //location to track movement spent
     public List<Soldier>  activeSoldiers;
     public List<Soldier> soldiersInRange;
@@ -59,7 +59,9 @@ public class TurnManager : MonoBehaviour
                     watchActionTimer -= Time.deltaTime;
                 }
                 else
-                { reacting = false;  }
+                { reacting = false;
+                    if (moveRemaining > 0) { currentSoldier.Focus(); }
+                }
             }
 
 
@@ -77,6 +79,8 @@ public class TurnManager : MonoBehaviour
     }
     public void LoopThroughactions()
     {
+        if (actionsOnStack.Count > 1) { currentSoldier.FocusOff(); }
+     
         Debug.Log("action loop: " + actionsOnStack.Count.ToString());
        
         watchActionTimer = actionsOnStack[actionsOnStack.Count - 1].actionTime;
@@ -87,10 +91,22 @@ public class TurnManager : MonoBehaviour
         actionManager.PerformAction(actionsOnStack[actionsOnStack.Count - 1],GetComponent<TurnManager>());
         actionsOnStack.RemoveAt(actionsOnStack.Count - 1);
         uiManager.SetTurnList(activeSoldiers);
+        if (actionRemaining <= 0) { EndTurn(); }
     }
     public void SpendActionPoints(int spent)
     {
-        actionRemaining -= spent;
+        if (spent == -1) {
+
+            actionRemaining = 0;
+         
+        }
+        else {
+
+            actionRemaining -= spent;
+        }
+        currentSoldier.actionpoints = actionRemaining;
+        actionpointstext.text = actionRemaining.ToString();
+       
     }
     public void ControlSoldier()
     {
@@ -101,7 +117,14 @@ public class TurnManager : MonoBehaviour
             activeMarker.transform.LookAt(lookTarget.transform);
             moveLimiter.transform.position = posmark;
             if (Vector3.Distance(posmark, currentSoldier.transform.position) > 1)
-            { IncrementMove(1); }
+            {
+            EndUseAbility(2);
+            if (actionManager.CheckActionPoints(2, moveRemaining, currentSoldier, currentSoldier, GetComponent<TurnManager>()) == true)
+                 { }
+            
+          //  IncrementMove(1);
+
+                }
 
             if (Input.GetKeyUp(KeyCode.Alpha1))
             {
@@ -113,7 +136,7 @@ public class TurnManager : MonoBehaviour
             }
             if (Input.GetKeyUp(KeyCode.Alpha3))
             {
-                AbilityButtonPress(2);
+                AbilityButtonPress(3);
             }
    
 
@@ -124,7 +147,18 @@ public class TurnManager : MonoBehaviour
         }
         if (Input.GetKeyUp(KeyCode.R) && lastActionPress != -1)
         {
-            CheckRange(currentSoldier.loadout.range);
+           // CheckRange(currentSoldier.loadout.range);
+            TabTarget(0,currentSoldier.team);
+        }
+        if (Input.GetKeyUp(KeyCode.F) && lastActionPress != -1)
+        {
+            //CheckRange(currentSoldier.loadout.range);
+            TabTarget(1, currentSoldier.team);
+        }
+        if (Input.GetKeyUp(KeyCode.V) && lastActionPress != -1)
+        {
+            //CheckRange(currentSoldier.loadout.range);
+            TabTarget(2, currentSoldier.team);
         }
     }
     public void CheckReactions(actionData act)
@@ -133,18 +167,25 @@ public class TurnManager : MonoBehaviour
         foreach (reaction el in reactsOnStack)
         {
             Debug.Log("check react");
-            if (act.reactType == el.reacttype && Vector3.Distance(el.actor.transform.position, act.loc) < el.range && el.actor.currentreactPoints >= el.cost )
+            //overwatch is temporary
+            if (el.actor.inOverwatch == false && el.action == 1) { }
+            else
             {
-                //  if((act.team != el.actor.team && el.teamtype == 1))
-                //   Debug.Log("diff team:  confirmed react");
-                // actionsOnStack.Add(actionManager.ConfirmAction(el.action, el.actor,act.target, this.GetComponent<TurnManager>()));
-
-                if (((act.team == el.actor.team && el.teamtype == 0) || (act.team != el.actor.team && el.teamtype == 1)) && el.actor != act.actor)
+                //confirm the action matches the reaction event
+                if (act.reactType == el.reacttype && Vector3.Distance(el.actor.transform.position, act.loc) < el.range && el.actor.currentreactPoints >= el.cost)
                 {
-                    Debug.Log(" confirmed react");
-                    actionsOnStack.Add(actionManager.ConfirmAction(el.action, el.actor, act.target, this.GetComponent<TurnManager>()));
-                    el.actor.usedReaction = true;
-                    el.actor.currentreactPoints -= el.cost;
+
+                    //confirm the target is the correct team
+                    if (((act.team == el.actor.team && el.teamtype == 0) || (act.team != el.actor.team && el.teamtype == 1)) && el.actor != act.actor)
+                    {
+                        Debug.Log(" confirmed react");
+                        actionsOnStack.Add(actionManager.ConfirmAction(el.action, el.actor, act.target, this.GetComponent<TurnManager>()));
+
+
+                        el.actor.usedReaction = true;
+                        el.actor.currentreactPoints -= el.cost;
+                        if (el.actor.inOverwatch == true && el.action == 1) { el.actor.inOverwatch = false; }
+                    }
                 }
             }
         }
@@ -164,12 +205,15 @@ public class TurnManager : MonoBehaviour
         if (lastActionPress != abilityNumber)
         {
 
-            if (focusTeam == true && (int)currentSoldier.loadout.actions[abilityNumber].y == 1) { soldiersInRange.Clear(); focusTeam = false; }
-            if (focusTeam == false && (int)currentSoldier.loadout.actions[abilityNumber].y == 0) { soldiersInRange.Clear(); focusTeam = true; }
+            //  if (focusTeam == true && (int)currentSoldier.loadout.actions[abilityNumber].y == 1) { soldiersInRange.Clear(); focusTeam = false; }
+            // if (focusTeam == false && (int)currentSoldier.loadout.actions[abilityNumber].y == 0) { soldiersInRange.Clear(); focusTeam = true; }
 
-            if (soldiersInRange.Count == 0) { CheckRange(currentSoldier.loadout.range); }
-         
-
+            // if (soldiersInRange.Count == 0) { CheckRange(currentSoldier.loadout.range); }
+            UpdateTargetList(currentSoldier.loadout.range);
+            if (abilityNumber < currentSoldier.loadout.actions.Count)
+            {
+                TabTarget((int)currentSoldier.loadout.actions[abilityNumber].y, currentSoldier.team);
+            }
 
             if (actionManager.CheckActionPoints(abilityNumber,actionRemaining,currentSoldier ,lookTarget, GetComponent<TurnManager>()) == true)
             {
@@ -202,54 +246,126 @@ public class TurnManager : MonoBehaviour
         actionsOnStack.Clear();
         actionData tempAction = actionManager.ConfirmAction(ability, currentSoldier, lookTarget, this.GetComponent<TurnManager>());
         actionsOnStack.Add(tempAction);
-        lastActionPress = -1;
+        if (actionManager.CheckActionPoints(lastActionPress, actionRemaining, currentSoldier, lookTarget, GetComponent<TurnManager>()) == false) { lastActionPress = -1; }
+       // lastActionPress = -1;
         if (actionsOnStack.Count > 0) { CheckReactions(tempAction); }
     }
 
-    public void CheckRange(int maxDistance)
+    public bool CheckLineOfSight(Soldier actingSolider,Soldier targetSoldier)
+    {
+        RaycastHit hit;
+        var ray = actingSolider.eyes.transform.position;
+        foreach (Transform el in targetSoldier.aimPoints)
+        {
+                if (Physics.Raycast(gun.transform.position, (el.transform.position - gun.transform.position), out hit))
+                {
+                    if (hit.transform == el)
+                    { return true; }
+            
+                }
+        }
+
+        return false;
+    }
+
+    public bool CheckRange(int maxDistance,Soldier actingSoldier, Soldier targetSoldier)
     {
         //if the list has elements toggle through them
-      
-        if (soldiersInRange.Count > 0 )
-        {
-            soldiersInRange.RemoveAt(soldiersInRange.Count - 1);
+        return maxDistance >= Vector3.Distance(actingSoldier.transform.position,targetSoldier.transform.position);
+
+        //if (soldiersInRange.Count > 0 )
+        //{
+        //    soldiersInRange.RemoveAt(soldiersInRange.Count - 1);
            
-        }
+        //}
 
-        if (soldiersInRange.Count != 0)
-        {
+        //if (soldiersInRange.Count != 0)
+        //{
          
-                lookTarget = soldiersInRange[soldiersInRange.Count - 1];
-            targetMarker.transform.position = lookTarget.transform.position;
-            tohittext.text = ( CalculateToHit()).ToString();
-        }
-        else
-        {
-            foreach (Soldier el in activeSoldiers)
-            {
-                //el != currentSoldier &&
-                if ( Vector3.Distance(currentSoldier.transform.position, el.transform.position) <= maxDistance)
-                    {
-                    soldiersInRange.Add(el);
-                    //note: can always target everyone.
+        //        lookTarget = soldiersInRange[soldiersInRange.Count - 1];
+        //    targetMarker.transform.position = lookTarget.transform.position;
+        //    tohittext.text = ( CalculateToHit()).ToString();
+        //}
+        //else
+        //{
+        //    foreach (Soldier el in activeSoldiers)
+        //    {
+        //        //el != currentSoldier &&
+        //        if ( Vector3.Distance(currentSoldier.transform.position, el.transform.position) <= maxDistance)
+        //            {
+        //            soldiersInRange.Add(el);
+        //            //note: can always target everyone.
 
-                //    if ((el.team != currentSoldier.team && focusTeam == false) || (el.team == currentSoldier.team && focusTeam == true)) { soldiersInRange.Add(el); }
-                  //  else { soldiersInRange.Add(el); }
+        //        //    if ((el.team != currentSoldier.team && focusTeam == false) || (el.team == currentSoldier.team && focusTeam == true)) { soldiersInRange.Add(el); }
+        //          //  else { soldiersInRange.Add(el); }
 
-                     }
+        //             }
                 
                          
-            }
-            if (soldiersInRange.Count != 0)
-            {
-                lookTarget = soldiersInRange[soldiersInRange.Count - 1];
-                targetMarker.transform.position = lookTarget.transform.position;
-                tohittext.text = ( CalculateToHit()).ToString();
-            }
-        }
+        //    }
+        //    if (soldiersInRange.Count != 0)
+        //    {
+        //        lookTarget = soldiersInRange[soldiersInRange.Count - 1];
+        //        targetMarker.transform.position = lookTarget.transform.position;
+        //        tohittext.text = ( CalculateToHit()).ToString();
+        //    }
+        //}
 
        // if (lookTarget != null && lookTarget != currentSoldier) { targetMarker.transform.position = lookTarget.transform.position; }
     }
+
+    public void UpdateTargetList(int maxDistance)
+    {
+        soldiersInRange.Clear();
+        foreach (Soldier el in activeSoldiers)
+        {
+            if (Vector3.Distance(currentSoldier.transform.position, el.transform.position) <= maxDistance)
+            {
+                soldiersInRange.Add(el);
+            }
+
+
+        }
+        soldiersInRange.Sort((s1, s2) => (Vector3.Distance(s1.transform.position,currentSoldier.transform.position)).CompareTo(Vector3.Distance(s2.transform.position, currentSoldier.transform.position)));
+    }
+
+    public Soldier TabTarget(int type,int teamtarget)// all, friendlies, enemies
+    {
+
+        targetInList++;
+        int count = 0;//to never get stuck in an infinite target loop 
+        while (count < soldiersInRange.Count) {
+            if (targetInList > soldiersInRange.Count - 1)
+            { targetInList = 0; }
+           
+                while ((soldiersInRange[targetInList].team != teamtarget && type == 0) || (soldiersInRange[targetInList].team == teamtarget && type == 1) && count < soldiersInRange.Count)
+                {
+
+                    targetInList++;
+                    if (targetInList > soldiersInRange.Count - 1)
+                    { targetInList = 0; }
+                    count++;
+                }
+            
+        
+
+
+            
+            count++;
+        }
+
+        lookTarget = soldiersInRange[targetInList];
+        targetMarker.transform.position = lookTarget.transform.position;
+        tohittext.text = (CalculateToHit()).ToString();
+
+        //todo: note when no one is in range
+         if (lookTarget != null ) { targetMarker.transform.position = lookTarget.transform.position; }
+
+
+        return soldiersInRange[targetInList];
+    }
+
+
     public int CalculateToHit()
     {
         int accmod = 0;
@@ -281,6 +397,7 @@ public class TurnManager : MonoBehaviour
     }
     public void EndTurn()
     {
+        targetInList = 0;
         lastActionPress = -1;
         soldiersInRange.Clear(); focusTeam = false;
         foreach (Transform el in accRaycastHitIndicatorParent)
@@ -337,13 +454,20 @@ public class TurnManager : MonoBehaviour
 
     public void IncrementMove(int amount)
     {
-        moveRemaining = currentSoldier.SpendMove(amount);
-        
-        lastpos = posmark;
-        posmark = currentSoldier.transform.position;
-        //if move clear the range list so out of reange dont remain, and in range enemies get added
-        soldiersInRange.Clear();
+    
+        if (moveRemaining > 0)
+        {
+            moveRemaining = currentSoldier.SpendMove(amount);
+            lastpos = posmark;
+            posmark = currentSoldier.transform.position;
+            //if move clear the range list so out of reange dont remain, and in range enemies get added
+            soldiersInRange.Clear();
+
+            UpdateTargetList(currentSoldier.loadout.range);
+        }
+        actionpointstext.text = currentSoldier.actionpoints.ToString();
         movepointsText.text = moveRemaining.ToString();
+        if (moveRemaining <= 0) { currentSoldier.FocusOff();Debug.Log("NoMoveLeft"); }
     }
     public void SortSoldierList()
     {
@@ -357,7 +481,11 @@ public class TurnManager : MonoBehaviour
                 //add all reactions
                 foreach (int elr in el.loadout.reactionActions)
                 {
-                    reactsOnStack.Add(actionManager.ConfirmReaction(elr, el, GetComponent<TurnManager>()));
+                    if (el.inOverwatch == false && elr == 1)
+                    { }
+                    else { 
+                        reactsOnStack.Add(actionManager.ConfirmReaction(elr, el, GetComponent<TurnManager>()));
+                          }
                 }
                 Debug.Log("adding react");
             }
@@ -365,6 +493,12 @@ public class TurnManager : MonoBehaviour
         }
         currentSoldier = activeSoldiers[activeSoldiers.Count - 1];
         currentSoldier.Focus();
+        moveRemaining = currentSoldier.SpendMove(0);
+
+
+        UpdateTargetList(15);
+        TabTarget(0,0);
+        posmark = currentSoldier.transform.position;
        // uiManager.SetSoldierDisplayerText(currentSoldier);
         uiManager.SetTurnList(activeSoldiers);
         lookTarget = currentSoldier;
@@ -373,6 +507,15 @@ public class TurnManager : MonoBehaviour
         actionpointstext.text = currentSoldier.actionpoints.ToString();
         lastpos = currentSoldier.transform.position;
         posmark = currentSoldier.transform.position;
+        moveRemaining = currentSoldier.SpendMove(0);
+
+
+        
+
+
+
+
+
         cam.GetComponent<ThirdPersonOrbitCam>().player = currentSoldier.transform;
        
     }
